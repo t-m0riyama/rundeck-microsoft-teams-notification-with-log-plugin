@@ -1,0 +1,35 @@
+{
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "themaColor": "${color}",
+    "summary": "***[Rundeck Job notification / ${job_status}] #${execution.id}***",
+    "title": "[Rundeck job notification / ${job_status}] #${execution.id}",
+    "sections": [
+        {
+            "activityTitle": "Posted by **Rundeck Scheduler**",
+            "facts": [
+                {
+                    "name": "Job:",
+                    "value": "${execution.job.name}"
+                },
+                {
+                    "name": "Group:",
+                    "value": "${execution.job.group}"
+                },
+                {
+                    "name": "Started:",
+                    "value": "${execution.dateStarted}"
+                },
+                {
+                    "name": "Status:",
+                    "value": "${execution.status}"
+                },
+                {
+                    "name": "Rundeck execution URL:",
+                    "value": "${execution.href}"
+                }
+            ],
+            "text": "![Result Icon](data:image/png;base64,${icon_base64})"
+        }
+    ]
+}

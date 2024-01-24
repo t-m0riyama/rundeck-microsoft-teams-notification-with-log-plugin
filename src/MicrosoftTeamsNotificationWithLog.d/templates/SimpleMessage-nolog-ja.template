@@ -1,0 +1,35 @@
+{
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "themaColor": "${color}",
+    "summary": "***[Rundeckジョブ結果通知 / ${job_status}] #${execution.id}***",
+    "title": "[Rundeckジョブ結果通知 / ${job_status}] #${execution.id}",
+    "sections": [
+        {
+            "activityTitle": "Posted by **Rundeck Scheduler**",
+            "facts": [
+                {
+                    "name": "ジョブ:",
+                    "value": "${execution.job.name}"
+                },
+                {
+                    "name": "ジョブグループ:",
+                    "value": "${execution.job.group}"
+                },
+                {
+                    "name": "開始:",
+                    "value": "${execution.dateStarted}"
+                },
+                {
+                    "name": "ステータス:",
+                    "value": "${execution.status}"
+                },
+                {
+                    "name": "Rundeck ジョブ実行URL:",
+                    "value": "${execution.href}"
+                }
+            ],
+            "text": "![Result Icon](data:image/png;base64,${icon_base64})"
+        }
+    ]
+}
