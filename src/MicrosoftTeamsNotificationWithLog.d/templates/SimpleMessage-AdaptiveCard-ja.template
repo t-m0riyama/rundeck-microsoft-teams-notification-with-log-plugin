@@ -1,0 +1,146 @@
+{
+  "type": "message",
+  "attachments": [
+    {
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "type": "AdaptiveCard",
+        "version": "1.3",
+        "schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "msteams": {
+          "width": "Full"
+        },
+        "body": [
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "text": "[Rundeckジョブ結果通知 / ${job_status}] #${execution.id}",
+                    "type": "TextBlock",
+                    "size": "medium",
+                    "weight": "bolder",
+                    "wrap": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "url": "data:image/png;base64,${icon_base64}",
+                    "type": "Image",
+                    "size": "small"
+                  }
+                ],
+                "width": "auto"
+              },
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "text": "${execution.job.name}",
+                    "type": "TextBlock",
+                    "color": "accent",
+                    "size": "small",
+                    "wrap": true
+                  },
+                  {
+                    "text": "Posted by  **Rundeck Scheduler**",
+                    "type": "TextBlock",
+                    "size": "small"
+                  }
+                ],
+                "width": "stretch"
+              }
+            ]
+          },
+          {
+            "separator": true,
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "facts": [
+                      {
+                        "title": "ジョブグループ:",
+                        "value": "${execution.job.group}"
+                      },
+                      {
+                        "title": "開始:",
+                        "value": "${execution.dateStarted}"
+                      },
+                      {
+                        "title": "ステータス:",
+                        "value": "${execution.status}"
+                      },
+                      {
+                        "title": "Rundeck ジョブ実行URL:",
+                        "value": "${execution.href}"
+                      },
+                      {
+                        "title": "ログ出力の切り捨て:",
+                        "value": "${log_snipped}"
+                      }
+                    ],
+                    "type": "FactSet"
+                  },
+                  {
+                    "items": [
+                      {
+                        "id": "collapse",
+                        "isVisible": true,
+                        "text": "詳細表示    🔽",
+                        "type": "TextBlock",
+                        "weight": "bolder"
+                      },
+                      {
+                        "id": "expand",
+                        "isVisible": false,
+                        "text": "簡易表示    🔼",
+                        "type": "TextBlock",
+                        "weight": "bolder"
+                      },
+                      {
+                        "id": "expand_items",
+                        "isVisible": false,
+                        "text": "\n${job_log_line_fix}\n",
+                        "type": "TextBlock",
+                        "size": "small"
+                      }
+                    ],
+                    "type": "Container",
+                    "selectAction": {
+                      "title": "展開/省略",
+                      "targetElements": [
+                        {
+                          "elementId": "collapse"
+                        },
+                        {
+                          "elementId": "expand"
+                        },
+                        {
+                          "elementId": "expand_items"
+                        }
+                      ],
+                      "type": "Action.ToggleVisibility"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "type": "message",
+  "attachments": [
+    {
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "type": "AdaptiveCard",
+        "version": "1.3",
+        "schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "msteams": {
+          "width": "Full"
+        },
+        "body": [
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "text": "[Rundeck Job notification / ${job_status}] #${execution.id}",
+                    "type": "TextBlock",
+                    "size": "medium",
+                    "weight": "bolder",
+                    "wrap": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "url": "data:image/png;base64,${icon_base64}",
+                    "type": "Image",
+                    "size": "small"
+                  }
+                ],
+                "width": "auto"
+              },
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "text": "${execution.job.name}",
+                    "type": "TextBlock",
+                    "color": "accent",
+                    "size": "small",
+                    "wrap": true
+                  },
+                  {
+                    "text": "Posted by  **Rundeck Scheduler**",
+                    "type": "TextBlock",
+                    "size": "small"
+                  }
+                ],
+                "width": "stretch"
+              }
+            ]
+          },
+          {
+            "separator": true,
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "items": [
+                  {
+                    "facts": [
+                      {
+                        "title": "Group:",
+                        "value": "${execution.job.group}"
+                      },
+                      {
+                        "title": "Started:",
+                        "value": "${execution.dateStarted}"
+                      },
+                      {
+                        "title": "Status:",
+                        "value": "${execution.status}"
+                      },
+                      {
+                        "title": "Rundeck execution URL:",
+                        "value": "${execution.href}"
+                      }
+                    ],
+                    "type": "FactSet"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

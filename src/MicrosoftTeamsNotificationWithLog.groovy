@@ -39,7 +39,7 @@ rundeckPlugin(NotificationPlugin) {
     INFORMATION_ICON_FILE = "information-icon.png"
     ALERT_ICON_FILE = "alert-icon.png"
 
-    MAX_LOG_SIZE_KB = 14
+    MAX_LOG_SIZE_KB = 11
     RUNDECK_API_ENDPOINT = "https://localhost:4443/api"
     RUNDECK_API_VERSION = 31
 
@@ -122,8 +122,10 @@ rundeckPlugin(NotificationPlugin) {
             template_file = "${configuration.template_name}-nolog-${configuration.template_language}.template"
         }
 
+        String job_log_line_fix = job_log.replace("\n", "\n\n")
         template_args = [
             "job_log":job_log,
+            "job_log_line_fix": job_log_line_fix,
             "job_status":job_status,
             "color":color,
             "log_snipped":log_snipped,
