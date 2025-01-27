@@ -52,14 +52,19 @@ rundeckPlugin(NotificationPlugin) {
     }
 
     escapeJson = { String text ->
-        text = text.replaceAll(/\\r/, '<<CR>>')
-        text = text.replaceAll(/\\n/, '<<LF>>')
+        text = text.replaceAll(/\r/, '<<CR>>')
+        text = text.replaceAll(/\n/, '<<LF>>')
         //text = text.replaceAll(/\\/, '/')
         text = text.replace('\\', '/')
         text = text.replaceAll(/\"/, '\\\\"')
         text = text.replaceAll(/\//, '\\\\/')
-        text = text.replaceAll(/<<CR>>/, '\\\\r')
+        //text = text.replaceAll("=", '\\=')
+        //text = text.replaceAll("-", '\\-')
+        text = text.replaceAll(/\h/, '&emsp;')
+        text = text.replaceAll(/<<CR>><<LF>>/, '\\\\n')
+        text = text.replaceAll(/<<CR>>/, '\\\\n')
         text = text.replaceAll(/<<LF>>/, '\\\\n')
+        // text = URLEncoder.encode(text, "UTF-8")
         return text
     }
 
@@ -122,10 +127,11 @@ rundeckPlugin(NotificationPlugin) {
             template_file = "${configuration.template_name}-nolog-${configuration.template_language}.template"
         }
 
-        String job_log_line_fix = job_log.replace("\n", "\n\n")
+        // String job_log_line_fix = job_log.replace("\n", "\n\n")
+        String job_log_line_fix = job_log.replaceAll(/\h/, '&emsp;').replace("\\n", "  \n").replace("\\r", "  \n")
         template_args = [
             "job_log":job_log,
-            "job_log_line_fix": job_log_line_fix,
+            "job_log_line_fix":job_log_line_fix,
             "job_status":job_status,
             "color":color,
             "log_snipped":log_snipped,
