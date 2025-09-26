@@ -98,7 +98,7 @@ rundeckPlugin(NotificationPlugin) {
         String paylod_file_name = "/tmp/json_payload-${execution.id}.txt"
         def paylod_file = new File(paylod_file_name)
         paylod_file.text = json_payload
-        process = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d @${paylod_file_name} ${configuration.webhook_url}" ].execute().text
+        process = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d @${paylod_file_name} '${configuration.webhook_url}'" ].execute().text
         paylod_file.delete()
     }
 
