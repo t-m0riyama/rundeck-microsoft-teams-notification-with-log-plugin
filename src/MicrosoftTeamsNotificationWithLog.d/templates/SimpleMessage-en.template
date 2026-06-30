@@ -2,8 +2,8 @@
     "@type": "MessageCard",
     "@context": "https://schema.org/extensions",
     "themaColor": "${color}",
-    "summary": "***[Rundeck Job notification / ${job_status}] #${execution.id}***",
-    "title": "[Rundeck job notification / ${job_status}] #${execution.id}",
+    "summary": "***[Rundeck Job notification / ${notification_label}] #${execution.id}***",
+    "title": "[Rundeck job notification / ${notification_label}] #${execution.id}",
     "sections": [
         {
             "activityTitle": "Posted by **Rundeck Scheduler**",

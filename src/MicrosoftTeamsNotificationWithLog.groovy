@@ -40,14 +40,14 @@ rundeckPlugin(NotificationPlugin) {
     ALERT_ICON_FILE = "alert-icon.png"
 
     MAX_LOG_SIZE_KB = 11
-    RUNDECK_API_ENDPOINT = "https://localhost:4443/api"
-    RUNDECK_API_VERSION = 31
+    DEFAULT_API_URL = "https://localhost:4443/api"
+    DEFAULT_API_VERSION = "31"
 
     configuration {
         webhook_url title:"Webhook URL", required:true, type:"String", description:"You may find it in Microsoft Teams Channel user interfaces by using Incomming Webhook connector via:  Channel Name -> Connectors -> Incomming Webhook"
         rundeck_authtoken title:"Rundeck User API token", required:true, type:"String", description:"Rundeck API token. via: Account -> profile -> User API Tokens."
         include_outputlog title:"Include job output as inline message", required:true, defaultValue:"true", values:["true", "false"], description:"Include job output logs in messages. Limit the size of the log to ${this.MAX_LOG_SIZE_KB}k bytes."
-        template_name title:"Message template", required:true, defaultValue:"SimpleMessage", description:"Specifies the template for the notification message."
+        template_name title:"Message template", required:true, defaultValue:"SimpleMessage-AdaptiveCard", description:"Specifies the template for the notification message."
         template_language title:"Template language", required:true, defaultValue:"ja", values:["en", "ja"], description:"Specifies the language of the template for the notification message."
     }
 
@@ -70,8 +70,40 @@ rundeckPlugin(NotificationPlugin) {
 
     // Use the Rundeck API to get the output of a job.
     getRundeckLog = { execution, configuration ->
-        rundeck_log = [ 'bash', '-c', "curl -v -k -H \"Accept: application/json\" -H \"X-Rundeck-Auth-Token: ${configuration.rundeck_authtoken}\" -X GET ${this.RUNDECK_API_ENDPOINT}/${this.RUNDECK_API_VERSION}/execution/${execution.id}/output" ].execute().text
+        def default_api_url = this.DEFAULT_API_URL
+        def default_api_version = this.DEFAULT_API_VERSION
+        def curl_script = '''
+            API_URL=""
+            if [ -f /home/rundeck/etc/framework.properties ]; then
+              SERVER_URL=$(grep -E '^framework\\.server\\.url' /home/rundeck/etc/framework.properties | head -1 | cut -d= -f2- | tr -d ' \\r')
+              if [ -n "$SERVER_URL" ]; then
+                API_URL="${SERVER_URL}/api"
+              fi
+            fi
+            if [ -z "$API_URL" ] && [ -f /etc/rundeck/framework.properties ]; then
+              SERVER_URL=$(grep -E '^framework\\.server\\.url' /etc/rundeck/framework.properties | head -1 | cut -d= -f2- | tr -d ' \\r')
+              if [ -n "$SERVER_URL" ]; then
+                API_URL="${SERVER_URL}/api"
+              fi
+            fi
+            API_URL="${API_URL:-''' + default_api_url + '''}"
+            API_VER=$(curl -sk "${API_URL}/99/system/info" 2>/dev/null | sed -n 's/.*"apiversion"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' | head -1)
+            API_VER="${API_VER:-''' + default_api_version + '''}"
+            curl -s -k -H "Accept: application/json" -H "X-Rundeck-Auth-Token: ''' + configuration.rundeck_authtoken + '''" -X GET "${API_URL}/${API_VER}/execution/''' + execution.id + '''/output"
+        '''.stripIndent().trim()
+        def proc = [ 'bash', '-c', curl_script ].execute()
+        proc.waitFor()
+        def rundeck_log = proc.text
+        if (proc.exitValue() != 0) {
+            throw new IOException("Rundeck API request failed (exit ${proc.exitValue()}): ${rundeck_log}")
+        }
+        if (!rundeck_log?.trim()) {
+            throw new IOException("Rundeck API returned empty response for execution ${execution.id}")
+        }
         def json_obj = (new JsonSlurper()).parseText(rundeck_log)
+        if (!json_obj?.entries) {
+            throw new IOException("Rundeck API response missing entries for execution ${execution.id}")
+        }
         String job_log = json_obj['entries']['log'].join("\n")
 
         // Due to Teams specifications, maximum message size is 25k bytes.
@@ -84,44 +116,63 @@ rundeckPlugin(NotificationPlugin) {
             job_log += "\n<<SNIPPED>>"
         }
         job_log += "\n"
-        //def job_log_file = new File("/tmp/job_log.txt")
-        //job_log_file.text = job_log
         return [job_log, log_snipped]
     }
 
     // Use the webhook to send the Teams message.
     sendTeamsNotification = { execution, configuration, template_file, template_args ->
-        def payload_template = new File(this.PAYLOAD_TEMPLATE_DIR + "/" + template_file).text
-        String payload_string = (new SimpleTemplateEngine()).createTemplate(payload_template).make(template_args)
-        def json_obj = (new JsonSlurper()).parseText(payload_string)
-        String json_payload = JsonOutput.toJson(json_obj)
-        String paylod_file_name = "/tmp/json_payload-${execution.id}.txt"
-        def paylod_file = new File(paylod_file_name)
-        paylod_file.text = json_payload
-        process = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d @${paylod_file_name} '${configuration.webhook_url}'" ].execute().text
-        paylod_file.delete()
+        try {
+            def payload_template = new File(this.PAYLOAD_TEMPLATE_DIR + "/" + template_file).text
+            String payload_string = (new SimpleTemplateEngine()).createTemplate(payload_template).make(template_args)
+            def json_obj = (new JsonSlurper()).parseText(payload_string)
+            String json_payload = JsonOutput.toJson(json_obj)
+            String paylod_file_name = "/tmp/json_payload-${execution.id}.txt"
+            def paylod_file = new File(paylod_file_name)
+            paylod_file.text = json_payload
+            def proc = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d @${paylod_file_name} '${configuration.webhook_url}'" ].execute()
+            proc.waitFor()
+            def output = proc.text
+            paylod_file.delete()
+            if (proc.exitValue() != 0) {
+                println("MicrosoftTeamsNotificationWithLog: webhook POST failed for execution ${execution.id}, exit=${proc.exitValue()}, output=${output}")
+                return false
+            }
+            return true
+        } catch (Exception ex) {
+            println("MicrosoftTeamsNotificationWithLog: webhook POST error for execution ${execution.id}: ${ex.message}")
+            ex.printStackTrace()
+            return false
+        }
     }
 
-    handleTrigger = { execution, configuration, job_status, color ->
-        if (job_status == "START") {
+    handleTrigger = { execution, configuration, notification_label, color ->
+        boolean include_log_in_message = (configuration.include_outputlog == "true")
+
+        if (notification_label == "START") {
             (job_log, log_snipped) = ["", false]
-        } else {
-            if (configuration.include_outputlog == "true") {
+        } else if (include_log_in_message) {
+            try {
                 (job_log, log_snipped) = this.getRundeckLog(execution, configuration)
-            } else {
+            } catch (Exception ex) {
+                println("MicrosoftTeamsNotificationWithLog: failed to fetch execution log for ${execution.id}, falling back to nolog template: ${ex.message}")
+                ex.printStackTrace()
+                include_log_in_message = false
                 (job_log, log_snipped) = ["", false]
             }
+        } else {
+            (job_log, log_snipped) = ["", false]
         }
 
-        if (job_status == "START") {
+        if (notification_label == "START") {
             icon_base64 = new File(this.IMAGE_DIR + "/" + this.INFORMATION_ICON_FILE).bytes.encodeBase64().toString()
-        } else if (job_status == "NG") {
+        } else if (notification_label == "NG") {
             icon_base64 = new File(this.IMAGE_DIR + "/" + this.ALERT_ICON_FILE).bytes.encodeBase64().toString()
-        } else if (job_status == "OK") {
+        } else if (notification_label == "OK") {
             icon_base64 = new File(this.IMAGE_DIR + "/" + this.INFORMATION_ICON_FILE).bytes.encodeBase64().toString()
         }
 
-        if (configuration.include_outputlog == "true") {
+        String template_file
+        if (include_log_in_message) {
             template_file = "${configuration.template_name}-${configuration.template_language}.template"
         } else {
             template_file = "${configuration.template_name}-nolog-${configuration.template_language}.template"
@@ -132,35 +183,32 @@ rundeckPlugin(NotificationPlugin) {
         template_args = [
             "job_log":job_log,
             "job_log_line_fix":job_log_line_fix,
-            "job_status":job_status,
+            "notification_label":notification_label,
             "color":color,
             "log_snipped":log_snipped,
             "icon_base64":icon_base64 ]
         template_args.putAll(["execution":execution])
-        this.sendTeamsNotification(execution, configuration, template_file, template_args)
+        return this.sendTeamsNotification(execution, configuration, template_file, template_args)
     }
 
     onstart {
         type = "START"
         color = "696969"
-        job_status = "NG"
-        this.handleTrigger(execution, configuration, job_status, color)
-        return true
+        notification_label = "START"
+        return this.handleTrigger(execution, configuration, notification_label, color)
     }
 
     onfailure {
         type = "FAILURE"
         color = "E81123"
-        job_status = "NG"
-        this.handleTrigger(execution, configuration, job_status, color)
-        return true
+        notification_label = "NG"
+        return this.handleTrigger(execution, configuration, notification_label, color)
     }
 
     onsuccess {
         type = "SUCCESS"
         color = "228B22"
-        job_status = "OK"
-        this.handleTrigger(execution, configuration, job_status, color)
-        return true
+        notification_label = "OK"
+        return this.handleTrigger(execution, configuration, notification_label, color)
     }
 }

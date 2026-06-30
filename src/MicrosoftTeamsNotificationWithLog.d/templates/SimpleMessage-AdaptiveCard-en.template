@@ -18,7 +18,7 @@
                 "type": "Column",
                 "items": [
                   {
-                    "text": "[Rundeck Job notification / ${job_status}] #${execution.id}",
+                    "text": "[Rundeck Job notification / ${notification_label}] #${execution.id}",
                     "type": "TextBlock",
                     "size": "medium",
                     "weight": "bolder",

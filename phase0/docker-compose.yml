@@ -1,0 +1,31 @@
+services:
+  mock-webhook:
+    build: ./mock-webhook
+    ports:
+      - "18080:8080"
+
+  rundeck:
+    image: rundeck/rundeck:5.9.0
+    hostname: rundeck
+    ports:
+      - "4440:4440"
+      - "4443:4443"
+    environment:
+      RUNDECK_GRAILS_URL: http://localhost:4440
+      RUNDECK_SERVER_FORWARDED: "true"
+      RUNDECK_ADMIN_USER: admin
+      RUNDECK_ADMIN_PASSWORD: admin
+    volumes:
+      # Groovy plugin (load path in official image)
+      - ../src/MicrosoftTeamsNotificationWithLog.groovy:/home/rundeck/libext/MicrosoftTeamsNotificationWithLog.groovy:ro
+      - ./MinimalNotificationPlugin.groovy:/home/rundeck/libext/MinimalNotificationPlugin.groovy:ro
+      # Asset dir path hardcoded in plugin source
+      - ../src/MicrosoftTeamsNotificationWithLog.d:/var/lib/rundeck/libext/MicrosoftTeamsNotificationWithLog.d:ro
+    depends_on:
+      - mock-webhook
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4440/"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s

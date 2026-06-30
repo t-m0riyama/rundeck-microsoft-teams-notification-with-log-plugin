@@ -18,7 +18,7 @@
                 "type": "Column",
                 "items": [
                   {
-                    "text": "[Rundeckジョブ結果通知 / ${job_status}] #${execution.id}",
+                    "text": "[Rundeckジョブ結果通知 / ${notification_label}] #${execution.id}",
                     "type": "TextBlock",
                     "size": "medium",
                     "weight": "bolder",
